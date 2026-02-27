@@ -199,4 +199,4 @@ index = y * width + x
 
 If it works — don’t touch it.
 
-This project is meant to evolve through controlled experimentation and forks.
+This project is meant to evolve through controlled experimentation and forks, by me and by other beginners just as a fun beginer project.
