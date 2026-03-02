@@ -129,9 +129,7 @@ if (closest.colCord.t < std::numeric_limits<float>::max()) {
 }
 }
 
-
-
-
+/*
 SDL_UpdateTexture(
     state.texture,
     nullptr,
@@ -142,9 +140,40 @@ SDL_UpdateTexture(
 SDL_RenderClear(state.renderer);
 SDL_RenderTexture(state.renderer, state.texture, nullptr, nullptr);
 SDL_RenderPresent(state.renderer);
+*/  
+
+    void* pixels;
+int pitch;
+
+//SDL_LockTexture(state.texture, nullptr, &pixels, &pitch);
+if (SDL_LockTexture(state.texture, nullptr, &pixels, &pitch) < 0) {
+    SDL_ShowSimpleMessageBox(SDL_MESSAGEBOX_ERROR, "Error", "Error with texture lock", state.window);
+        cleanup(state);
+        return -1;
+}
+
+for (int y = 0; y < framebuffer.height; y++) {
+
+    unsigned char* row = (unsigned char*)pixels + y * pitch;
+
+    for (int x = 0; x < framebuffer.width; x++) {
+
+        Pixel &p = framebuffer.at(x,y);
+
+        row[x*4 + 0] = p.r;
+        row[x*4 + 1] = p.g;
+        row[x*4 + 2] = p.b;
+        row[x*4 + 3] = p.a;
+    }
+}
+//unlock, render and present, its literlay wirtten in the name
+SDL_UnlockTexture(state.texture);
+SDL_RenderTexture(state.renderer, state.texture, nullptr, nullptr);
+SDL_RenderPresent(state.renderer);
 }
     
 
 
     cleanup(state); return 0;
+
 }
