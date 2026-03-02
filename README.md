@@ -1,94 +1,90 @@
-# Basic Software Renderer (SDL3 + C++)
+# CPU Software Renderer — SDL3 + Modern C++
 
-A minimal CPU-based renderer built from scratch using **SDL3** and modern **C++ (C++23/26)**.
+A **minimal CPU-based 3D software renderer** built completely from scratch using **SDL3** and **modern C++ (C++23/26)**.
 
-This project renders pixels manually into a framebuffer and uploads them to an SDL texture each frame.  
-The goal is full control over the math and rendering pipeline.
+This project manually generates rays, performs all math internally, writes pixels into a framebuffer, and uploads them to an SDL streaming texture every frame.
+
+The goal is **full control over the rendering pipeline**, deep understanding of 3D math, and learning how real graphics engines work — without hiding anything behind libraries.
 
 ---
 
 ## Features
 
 - Manual framebuffer (`std::vector<Pixel>`)
+- Full CPU-based rendering (no GPU pipeline)
 - Ray generation per pixel
-- Custom 3D vector math
+- Ray–sphere intersection
+- Custom 3D vector math library
 - Perspective camera with orthonormal basis
 - Rodrigues rotation formula
-- Local ↔ Global space transformations
+- Local ↔ global space transformations
+- Diffuse lighting (Lambert shading)
 - SDL3 streaming texture pipeline
+- Real-time camera rotation
 
 ---
 
 ## Rendering Pipeline
 
-Ray generation → Intersection math → Framebuffer → SDL_Texture → Screen
+Ray Generation → Intersection Tests → Lighting → Framebuffer → SDL_Texture → Screen
 
 Each frame:
 
-1. Generate ray per pixel
-2. Compute direction in camera space
-3. Transform to world space
-4. Write pixel to framebuffer
-5. Lock SDL texture
-6. Copy framebuffer memory
-7. Unlock and present
+1. Generate a ray for every pixel  
+2. Compute direction in camera-local space  
+3. Transform direction into world space  
+4. Perform intersection tests  
+5. Apply lighting  
+6. Write final color to framebuffer  
+7. Upload framebuffer to SDL texture  
+8. Present to screen  
 
 ---
 
 ## Build Instructions (Windows / MSYS2 / MinGW)
 
-Compile with:
-
-```bash
-g++ src/main.cpp src/renderer.cpp -o main.exe \
--I "~\code_projects\SDL\x86_64-w64-mingw32\include" \
--L "~\code_projects\SDL\x86_64-w64-mingw32\lib" \
--lSDL3
-```
-
-or
+Compile using:
 
 ```bash
 g++ src/main.cpp src/objects.cpp -o main.exe \
 -I "~\code_projects\SDL\x86_64-w64-mingw32\include" \
 -L "~\code_projects\SDL\x86_64-w64-mingw32\lib" \
 -lSDL3
-```
+````
 
 Make sure:
-- SDL3 DLL is accessible
-- Compiler matches SDL build (MinGW if using MinGW SDL)
+
+* SDL3 headers and libraries are installed
+* SDL3 `.dll` is available at runtime
+* Compiler matches the SDL build (MinGW → MinGW SDL)
 
 ---
 
-# Mathematics Used
+## Mathematics Used
 
-## 1. Ray Equation
+### 1. Ray Equation
 
-Parametric ray:
-
-r(t) = a + t b
+r(t) = a + t·b
 
 Where:
-- a = ray origin
-- b = direction
-- t = distance parameter
+
+* a = ray origin
+* b = ray direction
+* t = distance parameter
 
 ---
 
-## 2. Sphere Equation
+### 2. Sphere Intersection
+
+Sphere equation:
 
 x² + y² + z² = r²
 
-Substituting ray equation gives a quadratic:
+Substituting the ray equation yields:
 
 (b·b)t² + 2(a·b)t + (a·a − r²) = 0
 
----
-
-## 3. Quadratic Formula
-
-t = [−(a·b) ± sqrt((a·b)² − (b·b)((a·a) − r²))] / (b·b)
+Solved using the quadratic formula.
 
 Intersection exists if:
 
@@ -96,48 +92,51 @@ Intersection exists if:
 
 ---
 
-## 4. Orthonormal Basis
+### 3. Orthonormal Camera Basis
 
-Camera basis vectors:
-- i (right)
-- j (up)
-- k (forward)
+The camera maintains three perpendicular unit vectors:
+
+* i — right
+* j — up
+* k — forward
 
 Properties:
-- i·j = 0
-- i·k = 0
-- j·k = 0
-- |i| = |j| = |k| = 1
 
-Re-orthonormalization ensures numerical stability.
+i·j = 0
+i·k = 0
+j·k = 0
+|i| = |j| = |k| = 1
+
+This allows clean local ↔ world space transformations.
 
 ---
 
-## 5. Rodrigues Rotation Formula
+### 4. Rodrigues Rotation Formula
 
 v' = v cosθ + (u × v) sinθ + u(u·v)(1 − cosθ)
 
 Where:
-- u = axis of rotation
-- v = vector being rotated
+
+* u = rotation axis
+* v = vector being rotated
 
 ---
 
-# Camera Model
+## Camera Model
 
-Perspective projection per pixel:
+Each pixel generates a ray using perspective projection:
 
-u = normalized screen x  
-v = normalized screen y  
+u = normalized screen x
+v = normalized screen y
 direction = normalize(localToGlobal(u, v, focalLength))
 
-Aspect ratio correction applied.
+Aspect ratio correction ensures proper geometry.
 
 ---
 
-# Core Structures
+## Core Structures
 
-## Framebuffer
+### Framebuffer
 
 ```cpp
 std::vector<Pixel> pixels;
@@ -147,56 +146,63 @@ Pixel& at(int x, int y) {
 }
 ```
 
-Row-major memory layout:
+Row-major layout:
 
 index = y * width + x
 
 ---
 
-## Perspective Camera
+### Perspective Camera
 
-- Position
-- Focal length
-- Local basis vectors (i, j, k)
-- Rotation methods
-- Space transformation methods
-
----
-
-# Design Philosophy
-
-- No external math libraries
-- Full manual control
-- CPU-only rendering
-- Math-first implementation
-- Educational clarity over abstraction
+* Position
+* Focal length
+* Orthonormal basis vectors (i, j, k)
+* Rotation using Rodrigues formula
+* Space transformations
 
 ---
 
-# Project Goals
+## Design Philosophy
 
-- Ray-sphere intersections
-- Camera rotation
-- Local ↔ world transforms
-- Expand toward full raytracer
-- Eventually add:
-  - Lighting
-  - Materials
-  - Reflections
-  - Shadows
+* No external math libraries
+* No GPU pipeline
+* Everything built from scratch
+* Math-first approach
+* Educational clarity over abstraction
 
 ---
 
-# Requirements
+## Project Goals
 
-- C++23 / C++26 capable compiler
-- SDL3 (MinGW build recommended if using MinGW toolchain)
-- Windows / MSYS2 environment
+Current:
+
+* Ray generation
+* Sphere intersections
+* Camera movement & rotation
+* Lighting
+
+Next steps:
+
+* Multiple objects
+* Shadows
+* Reflections
+* Materials
+* Acceleration structures (BVH / spatial partitioning)
 
 ---
 
-# Notes
+## Requirements
 
-If it works — don’t touch it.
+* C++23 / C++26 compatible compiler
+* SDL3
+* Windows + MSYS2 / MinGW toolchain
 
-This project is meant to evolve through controlled experimentation and forks, by me and by other beginners just as a fun beginer project.
+---
+
+## Notes
+
+> If it works — don’t touch it.
+
+This project is intentionally built as a **learning-focused renderer**, evolving through experimentation, mistakes, and iteration.
+
+
