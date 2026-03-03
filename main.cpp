@@ -130,6 +130,7 @@ if (closest.colCord.t < std::numeric_limits<float>::max()) {
 }
 
 /*
+//optional if the other one does not work
 SDL_UpdateTexture(
     state.texture,
     nullptr,
@@ -146,7 +147,7 @@ SDL_RenderPresent(state.renderer);
 int pitch;
 
 //SDL_LockTexture(state.texture, nullptr, &pixels, &pitch);
-if (SDL_LockTexture(state.texture, nullptr, &pixels, &pitch) < 0) {
+if (!(SDL_LockTexture(state.texture, nullptr, &pixels, &pitch))) {
     SDL_ShowSimpleMessageBox(SDL_MESSAGEBOX_ERROR, "Error", "Error with texture lock", state.window);
         cleanup(state);
         return -1;

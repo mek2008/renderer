@@ -124,9 +124,12 @@ LightSource::LightSource(Vec3 cordinates, unsigned char brightness, Pixel color)
 
 
 
+
+
+
 Sphere::Sphere(Vec3 location, float radius, Pixel color)    :    location(location), radius(radius), color(color)    {}
 
-locPixelv Sphere::hitRR(Ray ray){
+locPixelv Sphere::hitRR(const Ray& ray) const {
 //t = [−(a·b) ± sqrt((a·b)² − (b·b)((a·a) − r²))] / (b·b)
 Vec3 oc = subtract3v(ray.origin, location);
 float a = dotProduct3v(ray.direction, ray.direction );
@@ -143,7 +146,7 @@ float t1 = (-b - sqrt(discrimenant)) / (2.0f * a);
 float t2 = (-b + sqrt(discrimenant)) / (2.0f * a);
 
 Vec3 pointCordinates = add3v(ray.origin, scelar3v(ray.direction, std::min(t1, t2)));
-Vec3 normal = subtract3v(pointCordinates, location);
+Vec3 normal = normalize3v(subtract3v(pointCordinates, location));
 
 
 return {color, pointCordinates, normal, std::min(t1, t2)}; //color, cordinates, t
