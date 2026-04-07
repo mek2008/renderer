@@ -1,135 +1,17 @@
 #include <algorithm>
 #include "objects.hpp"
+#include "perspNmath.hpp"
 #include <cmath>
+#include <memory>
 
-
-
-
-void ClosestP::closestH(locPixelv newColCord){
-if (colCord.t > newColCord.t && newColCord.t > 0) {
-colCord = newColCord;
-}
-}
-
-
-
-float dotProduct3v(const Vec3 &a, const Vec3 &b){
-return a.x*b.x + a.y*b.y + a.z*b.z;
-}
-
-Vec3 scelar3v(const Vec3 &vector, float scelar){
-return{vector.x * scelar, vector.y * scelar, vector.z * scelar};
-}
-
-Vec3 crossProduct3v(const Vec3 &a, Vec3 const &b){
-return {a.y*b.z - a.z*b.y, a.z*b.x - a.x*b.z, a.x*b.y - a.y*b.x};
-}
-Vec3 add3v(const Vec3 &a, const Vec3 &b){
-return {a.x+b.x, a.y+b.y, a.z+b.z };
-}
-Vec3 subtract3v(const Vec3 &a, const Vec3 &b){ //a-b = change
-return {a.x-b.x, a.y-b.y, a.z-b.z };
-}
-
-Vec3 normalize3v(Vec3 vector) {
-float lenght = sqrt(vector.x*vector.x + vector.y*vector.y + vector.z*vector.z);
-if(lenght != 0){
-return {vector.x/lenght, vector.y/lenght, vector.z/lenght};
-} else {return {0, 0, 0};}
-}
-
-
-float degreesToRadians(float degrees) {return degrees * (3.141592 / 180.0f);}
-
-Vec3 rodriguesRotation(const Vec3 &u, const Vec3 &v, float radrotation){ 
-//v’ = v * cosθ + (u × v) * sinθ + u * (u · v) * (1 − cosθ)
- return add3v(
-        add3v(
-            scelar3v(v, cos(radrotation)), 
-            scelar3v(crossProduct3v(u, v), sin(radrotation))
-        ), 
-        scelar3v(u, dotProduct3v(u, v) * (1 - cos(radrotation)))
-);
-} 
-
-
-
-
-
-
-
-
-Perspective::Perspective(Vec3 position, float focalLength) : position(position), focalLength(focalLength) {}
-
-void Perspective::rotatetioni(float radrotation){
-j = rodriguesRotation(i, j, radrotation);
-k = rodriguesRotation(i, k, radrotation);
-}
-void Perspective::rotatetionj(float radrotation){
-i = rodriguesRotation(j, i, radrotation);
-k = rodriguesRotation(j, k, radrotation);
-}
-void Perspective::rotatetionk(float radrotation){
-i = rodriguesRotation(k, i, radrotation);
-j = rodriguesRotation(k, j, radrotation);
-}
-
-
-void Perspective::reOrthonormalization(){
-    i = normalize3v(i);
-    j = normalize3v(j);
-    k = crossProduct3v(i, j);
-    j = crossProduct3v(k, i); 
-}
-
-// Vec3 version
-Vec3 Perspective::globaToLocalv(Vec3 world) {
-    return {
-        i.x * world.x + j.x * world.y + k.x * world.z,
-        i.y * world.x + j.y * world.y + k.y * world.z,
-        i.z * world.x + j.z * world.y + k.z * world.z
-    };
-}
-// Float version
-Vec3 Perspective::globaToLocal(float xo, float yo, float zo) {
-    return {
-        i.x * xo + j.x * yo + k.x * zo,
-        i.y * xo + j.y * yo + k.y * zo,
-        i.z * xo + j.z * yo + k.z * zo
-    };
-}
-
-// Vec3 version
-Vec3 Perspective::localToGlobalv(Vec3 local) {
-    return {
-        i.x * local.x + j.x * local.y + k.x * local.z,
-        i.y * local.x + j.y * local.y + k.y * local.z,
-        i.z * local.x + j.z * local.y + k.z * local.z
-    };
-}
-// Float version
-Vec3 Perspective::localToGlobal(float xo, float yo, float zo) {
-    return {
-        i.x * xo + j.x * yo + k.x * zo,
-        i.y * xo + j.y * yo + k.y * zo,
-        i.z * xo + j.z * yo + k.z * zo
-    };
-}
 
 
 LightSource::LightSource(Vec3 cordinates, unsigned char brightness, Pixel color)   :   cordinates(cordinates), brightness(brightness), color(color)   {}
 
 
-
-
-
-
-
-
-
 Sphere::Sphere(Vec3 location, float radius, Pixel color)    :    location(location), radius(radius), color(color)    {}
 
-locPixelv Sphere::hitRR(const Ray& ray) const {
+locPixelv Sphere::hitRR(const Ray& ray)  const  {
 //t = [−(a·b) ± sqrt((a·b)² − (b·b)((a·a) − r²))] / (b·b)
 Vec3 oc = subtract3v(ray.origin, location);
 float a = dotProduct3v(ray.direction, ray.direction );
@@ -138,7 +20,7 @@ float c = dotProduct3v(oc, oc) - (radius * radius);
 
 float discrimenant = b*b - 4.0f*a*c;
 
-if (discrimenant <= 0.001f) {
+if (discrimenant <= 0.000001f) {
 return {{0,0,0,0}, {0,0,0}, {0,0,0}, -1};
 }
 
@@ -155,15 +37,197 @@ return {color, pointCordinates, normal, std::min(t1, t2)}; //color, cordinates, 
 
 
 
+Triangle::Triangle(Vec3 a, Vec3 b, Vec3 c, Pixel color)   :   a(a), b(b), c(c), color(color) {
+        e = subtract3v(b, a);
+        f = subtract3v(c, a);
+        normal = normalize3v(crossProduct3v(e, f));
+}
 
-Pixel postLighting(const LightSource &light, const locPixelv &point ){
+locPixelv Triangle::hitRR(const Ray& ray)  const  {
+//Vec3 e = subtract3v(b, a); optimization
+//Vec3 f = subtract3v(c, a); optimization
+//Vec3 h = cross(ray.direction, e2);
+//float det = dot(e1, h);
+Vec3 q = crossProduct3v(e, ray.direction);
+float D = dotProduct3v(f, q);
+float invD = 1 / D;
+if (fabs(D) < 0.00001f) return {{0,0,0,0}, {0,0,0}, {0,0,0}, -1};
+
+Vec3 B = subtract3v(ray.origin, a);
+
+float v = (dotProduct3v(B, q)) * invD; 
+if (v < 0.0f || v > 1.0f) return {{0,0,0,0}, {0,0,0}, {0,0,0}, -1};
+
+Vec3 p = crossProduct3v(f, B);
+
+float u = (dotProduct3v(ray.direction, p)) * invD;
+if (u < 0.0f || u + v > 1.0f) return {{0,0,0,0}, {0,0,0}, {0,0,0}, -1};
+
+float t = (dotProduct3v(e, p)) * invD;
+if(t < 0.0001f)return{{0,0,0,0}, {0,0,0}, {0,0,0}, -1};
+
+Vec3 cord = add3v(ray.origin, scelar3v(ray.direction, t)); 
+
+//Vec3 normal = normalize3v(crossProduct3v(e, f)); optimization
+//if(D < 0) normal = normalize3v(crossProduct3v(f, e));
+Vec3 finalNormal = normal;
+
+if (dotProduct3v(finalNormal, ray.direction) > 0) finalNormal = scelar3v(finalNormal, -1);
+return {color, cord, finalNormal, t};
+}
+
+
+
+
+
+Tetrahedron::Tetrahedron(Vec3 a, Vec3 b, Vec3 c, Vec3 d, Pixel color)   :   a(a), b(b), c(c), d(d), color(color), 
+alpha(a, b, c, color), 
+beta(d, b, c, color),
+gamma(a, d, c, color),
+delta(a, b, d, color) {}
+
+
+//could use closestp
+/*
+locPixelv hitRR(Ray ray)
+{
+    std::array<Triangle*, 4> faces = { &alpha, &beta, &gamma, &delta };
+
+    ClosestP closest;
+
+    for (Triangle* tri : faces)
+        closest.closestH(tri->hitRR(ray));
+ 
+    return closest.colCord;
+}
+*/
+
+locPixelv Tetrahedron::hitRR(const Ray& ray) const
+{
+    ClosestP closest;
+
+    closest.closestH(alpha.hitRR(ray));
+    closest.closestH(beta.hitRR(ray));
+    closest.closestH(gamma.hitRR(ray));
+    closest.closestH(delta.hitRR(ray));
+
+    return closest.colCord;
+}
+
+
+
+
+
+Pixel postLighting(const LightSource &light, const locPixelv &point, float ambient ){
 Vec3 lightNormal = normalize3v(subtract3v(light.cordinates, point.cordinates));
 
-float lightAlignment = std::max(dotProduct3v(point.normal, lightNormal), 0.1f);
+float lightAlignment = std::max(dotProduct3v(point.normal, lightNormal), ambient);
 
 
 return {(unsigned char)(point.color.r * lightAlignment),
         (unsigned char)(point.color.g * lightAlignment),
         (unsigned char)(point.color.b * lightAlignment), point.color.a };
-}   
+}
 
+
+/*
+Pixel shadowImplementationnocap( const std::vector<std::unique_ptr<Object>> &scene,  const locPixelv &colCord,  const std::vector<std::unique_ptr<LightSource>> &lights, float ambient)
+{
+float brightR = 0.0f;
+float brightG = 0.0f;
+float brightB = 0.0f;
+
+for(const auto& ligh : lights){
+bool blocked = false;
+
+Vec3 offsetOrigin = add3v(colCord.cordinates, scelar3v(colCord.normal, 0.001f));
+
+Vec3 toLight = subtract3v(ligh->cordinates, colCord.cordinates);
+float lightDistance = sqrt(dotProduct3v(toLight, toLight));
+
+Ray shadowray{
+    offsetOrigin,
+    normalize3v(toLight)
+};
+
+for (const auto& obj : scene) {
+
+    auto hit = obj->hitRR(shadowray);
+
+    if (hit.t > 0.001f && hit.t < lightDistance) {
+        blocked = true;
+        break;
+    }
+}
+
+if(!blocked){
+float NdotL = std::max(dotProduct3v(colCord.normal, shadowray.direction), 0.0f);
+
+    brightR += (ligh->color.r / 255.0f) * NdotL;
+    brightG += (ligh->color.g / 255.0f) * NdotL;
+    brightB += (ligh->color.b / 255.0f) * NdotL;
+    brightR = std::min(brightR, 1.0f);
+    brightG = std::min(brightG, 1.0f);
+    brightB = std::min(brightB, 1.0f);
+}
+}
+    return {static_cast<unsigned char>(colCord.color.r * brightR),
+            static_cast<unsigned char>(colCord.color.g * brightG),
+            static_cast<unsigned char>(colCord.color.b * brightB),
+            colCord.color.a};
+}
+
+*/
+
+
+Pixel shadowImplementation( const std::vector<std::unique_ptr<Object>> &scene,  const locPixelv &colCord,  
+                            const std::vector<std::unique_ptr<LightSource>> &lights, float ambient)
+{
+float brightR = 0.0f;
+float brightG = 0.0f;
+float brightB = 0.0f;
+
+for(const auto& ligh : lights){
+bool blocked = false;
+
+Vec3 offsetOrigin = add3v(colCord.cordinates, scelar3v(colCord.normal, 0.001f));
+
+Vec3 toLight = subtract3v(ligh->cordinates, colCord.cordinates);
+float lightDistanceSq = dotProduct3v(toLight, toLight);    //float lightDistance = sqrt(dotProduct3v(toLight, toLight)); 
+
+Ray shadowray{
+    offsetOrigin,
+    normalize3v(toLight)
+};
+
+for (const auto& obj : scene) {
+
+    auto hit = obj->hitRR(shadowray);
+
+    if (hit.t > 0.001f && (hit.t * hit.t) < lightDistanceSq) { //if (hit.t > 0.001f && (hit.t * hit.t) < lightDistanceSq) compare Sq, less math to Sq than root
+        blocked = true;
+        break;
+    }
+}
+
+if(!blocked){
+float NdotL = std::max(dotProduct3v(colCord.normal, shadowray.direction), 0.0f);
+
+    brightR += (ligh->color.r / 255.0f) * NdotL;
+    brightG += (ligh->color.g / 255.0f) * NdotL;
+    brightB += (ligh->color.b / 255.0f) * NdotL;
+    brightR = std::min(brightR, 1.0f);
+    brightG = std::min(brightG, 1.0f);
+    brightB = std::min(brightB, 1.0f);
+/*
+    brightR = std::max(brightR, ambient);
+    brightG = std::max(brightG, ambient);
+    brightB = std::max(brightB, ambient);
+*/
+}
+}
+    return {static_cast<unsigned char>(colCord.color.r * std::max(brightR, ambient)),
+            static_cast<unsigned char>(colCord.color.g * std::max(brightG, ambient)),
+            static_cast<unsigned char>(colCord.color.b * std::max(brightB, ambient)),
+            colCord.color.a};
+}

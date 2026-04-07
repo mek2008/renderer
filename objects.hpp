@@ -1,76 +1,16 @@
 #pragma once
+#include "perspNmath.hpp"
+#include <memory>
 #include <limits>
 #include <vector>
 
 using std::vector;
 
-struct Pixel { unsigned char r, g, b, a; };
-static_assert(sizeof(Pixel) == 4, "Pixel must be 4 bytes");
-
-struct Vec3 { float x, y, z; };
-
-
-struct Rotation3matrix { Vec3 x, y, z; }; //x, y, z
-
-struct locPixelv{ Pixel color; Vec3 cordinates; Vec3 normal; float t; };
-
-struct Ray { Vec3 origin, direction; };
-
-class ClosestP{ public:
-locPixelv colCord = {{0, 0, 0, 0}, {0, 0, 0}, {0, 0, 0}, std::numeric_limits<float>::max()};
-bool hit = 0;
-
-void closestH(locPixelv newColCord);
+class Object{public:
+virtual locPixelv hitRR(const Ray& ray) const = 0;
+virtual ~Object() = default;
 };
 
-//for later optimization
-//struct RelevantObjects{vector<Objects>;};
-
-//struct RelevantLightSources{vector<LightSource>;};
-
-
-
-
-float dotProduct3v(const Vec3 &a, const Vec3 &b);
-
-Vec3 scelar3v(const Vec3 &vector, float scelar);
-
-Vec3 crossProduct3v(const Vec3 &a, Vec3 const &b);
-
-Vec3 add3v(const Vec3 &a, const Vec3 &b);
-
-Vec3 subtract3v(const Vec3 &a, const Vec3 &b);
-
-Vec3 normalize3v(Vec3 vector);
-
-float degreesToRadians(float degrees);
-
-Vec3 rodriguesRotation(Vec3 u, Vec3 v);
-
-
-
-class Perspective{ public:
-Vec3 position;
-Vec3 i{1, 0, 0}, j{0, 1, 0}, k{0, 0, 1}; //rotation matrix
-float focalLength;
-
-
-Perspective(Vec3 position, float focalLength);
-
-void rotatetioni(float radrotation);
-
-void rotatetionj(float radrotation);
-
-void rotatetionk(float radrotation);
-
-void reOrthonormalization();
-
-Vec3 globaToLocalv(Vec3 world);
-Vec3 globaToLocal(float xo, float yo, float zo);
-
-Vec3 localToGlobalv(Vec3 local);
-Vec3 localToGlobal(float xo, float yo, float zo);
-};
 
 
 class LightSource{public:
@@ -79,24 +19,57 @@ class LightSource{public:
     Pixel color;
 
 LightSource(Vec3 cordinates, unsigned char brightness, Pixel color);
-
 };
 
 
-
-
-class Sphere{ public:
+class Sphere : public Object { public:
 Vec3 location;
 float radius; 
 Pixel color;
-
 Sphere(Vec3 location, float radius, Pixel color);
 
-locPixelv hitRR(Ray ray);
+locPixelv hitRR(const Ray& ray) const override;
+};
+
+
+class Triangle : public Object { public:
+Vec3 a, b, c;
+Vec3 e, f;
+Vec3 normal;
+Pixel color;
+Triangle(Vec3 a, Vec3 b, Vec3 c, Pixel color);
+
+locPixelv hitRR(const Ray& ray) const override;
+};
+
+
+class Tetrahedron : public Object {public:
+Triangle alpha, beta, gamma, delta;
+Vec3 a, b, c, d;
+Pixel color;
+Tetrahedron(Vec3 a, Vec3 b, Vec3 c, Vec3 d, Pixel color);
+
+locPixelv hitRR(const Ray& ray) const override;
 };
 
 
 
+Pixel postLighting(const LightSource &light, const locPixelv &point, float ambient );
 
+struct RelevantObjects{vector<Object> rObj;};
+struct RelevantLightSources{vector<LightSource> rLight;};
 
-Pixel postLighting(const LightSource &light, const locPixelv &point );
+/*
+Pixel shadowImplementationnocap(
+    const std::vector<std::unique_ptr<Object>> &scene,
+    const locPixelv &colCord,
+    const std::vector<std::unique_ptr<LightSource>> &lights
+);
+*/
+
+Pixel shadowImplementation(
+    const std::vector<std::unique_ptr<Object>> &scene,
+    const locPixelv &colCord,
+    const std::vector<std::unique_ptr<LightSource>> &lights,
+    float ambient
+);
